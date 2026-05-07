@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devices Management - ISP System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#dc2626',
+                        secondary: '#000000',
+                        accent: '#ffffff'
+                    }
+                }
+            }
+        }
+        
+        // Function to toggle settings dropdown
+        function toggleSettingsDropdown() {
+            const dropdown = document.getElementById('settingsDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const settingsButton = document.getElementById('settingsButton');
+            const dropdown = document.getElementById('settingsDropdown');
+            
+            if (dropdown && settingsButton && 
+                !settingsButton.contains(event.target) && 
+                !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Function to toggle notification panel
+        function toggleNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Remove the translate-x-full class to show the panel
+            notificationPanel.classList.remove('translate-x-full');
+        }
+        
+        // Function to close notification panel
+        function closeNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Add the translate-x-full class to hide the panel
+            notificationPanel.classList.add('translate-x-full');
+        }
+        
+        // Close notification panel when clicking outside
+        document.addEventListener('click', function(event) {
+            const notificationPanel = document.getElementById('notificationPanel');
+            const notificationButton = document.getElementById('notificationButton');
+            
+            // Check if click is outside the notification panel and not on the notification button
+            if (notificationPanel && notificationButton && 
+                !notificationPanel.contains(event.target) && 
+                !notificationButton.contains(event.target)) {
+                // Close the panel (add translate-x-full class to move it off-screen)
+                notificationPanel.classList.add('translate-x-full');
+            }
+        });
+        
+        // Function to handle package sub-tabs
+        function showPackageSubTab(event, tabType) {
+            // Remove active class from all sub-tabs
+            const subTabs = document.querySelectorAll('.package-sub-tab');
+            subTabs.forEach(tab => {
+                tab.classList.remove('text-red-600', 'border-red-600');
+                tab.classList.add('text-gray-500', 'hover:text-gray-700', 'border-transparent', 'hover:border-gray-300');
+            });
+            
+            // Add active class to clicked sub-tab
+            event.target.closest('button').classList.remove('text-gray-500', 'hover:text-gray-700', 'border-transparent', 'hover:border-gray-300');
+            event.target.closest('button').classList.add('text-red-600', 'border-red-600');
+            
+            // Here you would typically filter the table content based on tabType
+            // For now, we'll just log to console to demonstrate the functionality
+            console.log('Showing ' + tabType + ' packages');
+        }
+        
+        // Function to handle mikrotik sub-tabs
+        function showMikrotikSubTab(event, tabType) {
+            // Remove active class from all sub-tabs
+            const subTabs = document.querySelectorAll('.mikrotik-sub-tab');
+            subTabs.forEach(tab => {
+                tab.classList.remove('bg-red-50', 'text-red-600');
+            });
+            
+            // Add active class to clicked sub-tab
+            event.target.closest('.rounded-lg').classList.add('bg-red-50', 'text-red-600');
+            
+            // Here you would typically filter the table content based on tabType
+            // For now, we'll just log to console to demonstrate the functionality
+            console.log('Showing ' + tabType + ' mikrotik devices');
+        }
+        
+        // Add this function to handle sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // Save sidebar state to localStorage
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            
+            // Change icon based on sidebar state
+            if (isCollapsed) {
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to apply saved sidebar state
+        function applySidebarState() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            // Check if sidebar state is saved in localStorage
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                sidebar.classList.remove('collapsed');
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to scroll to section
+        function scrollToSection(sectionId) {
+            console.log('scrollToSection called with:', sectionId);
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+                
+                // For Finance and Devices sections, scroll sidebar to show the clicked item
+                const financeAndDevicesSections = [
+                    'packages-section', 
+                    'payments-section', 
+                    'vouchers-section', 
+                    'expenses-section', 
+                    'mikrotik-section', 
+                    'equipment-section'
+                ];
+                
+                if (financeAndDevicesSections.includes(sectionId)) {
+                    // Find the corresponding sidebar link
+                    let linkSelector = '';
+                    switch(sectionId) {
+                        case 'packages-section':
+                            linkSelector = 'a[href="#"][onclick*="packages-section"]';
+                            break;
+                        case 'payments-section':
+                            linkSelector = 'a[href="#"][onclick*="payments-section"]';
+                            break;
+                        case 'vouchers-section':
+                            linkSelector = 'a[href="#"][onclick*="vouchers-section"]';
+                            break;
+                        case 'expenses-section':
+                            linkSelector = 'a[href="#"][onclick*="expenses-section"]';
+                            break;
+                        case 'mikrotik-section':
+                            linkSelector = 'a[href="#"][onclick*="mikrotik-section"]';
+                            break;
+                        case 'equipment-section':
+                            linkSelector = 'a[href="#"][onclick*="equipment-section"]';
+                            break;
+                    }
+                    
+                    if (linkSelector) {
+                        const sidebarLink = document.querySelector(linkSelector);
+                        if (sidebarLink) {
+                            const sidebar = document.getElementById('sidebar');
+                            if (sidebar) {
+                                // Small delay to ensure DOM is updated before scrolling
+                                setTimeout(() => {
+                                    // Scroll sidebar to show the clicked item
+                                    const linkOffsetTop = sidebarLink.offsetTop;
+                                    const sidebarHeight = sidebar.clientHeight;
+                                    const linkHeight = sidebarLink.offsetHeight;
+                                    
+                                    // Scroll to center the link in the sidebar
+                                    sidebar.scrollTop = linkOffsetTop - (sidebarHeight / 2) + (linkHeight / 2);
+                                    console.log('Scrolled sidebar to show link:', linkSelector);
+                                }, 100);
+                            }
+                        }
+                    }
+                }
+            } else {
+                console.log('Section not found:', sectionId);
+            }
+        }
+        
+        // Apply sidebar state when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applySidebarState();
+        });
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+            width: 282px;
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+            top: 4rem;
+            z-index: 20;
+        }
+        .sidebar.collapsed {
+            width: 88px;
+        }
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+        .sidebar.collapsed .nav-badge {
+            display: none;
+        }
+        .sidebar.collapsed .section-title {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-toggle-icon {
+            transform: rotate(180deg);
+        }
+        .main-content {
+            transition: all 0.3s ease;
+            margin-left: 282px;
+        }
+        .sidebar.collapsed + .main-content {
+            margin-left: 88px;
+        }
+        .nav-link:hover {
+            background-color: #fef2f2;
+        }
+        .nav-link.active {
+            background-color: #fef2f2;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md fixed w-full z-10">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-4">
+                <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 focus:outline-none" onclick="toggleSidebar()">
+                    <i id="sidebarIcon" class="fas fa-chevron-left text-xl"></i>
+                </button>
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">NeighborhoodNet</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search..." class="py-1 px-3 pl-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                    <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-sm"></i>
+                </div>
+                <div class="relative">
+                    <button id="notificationButton" class="relative p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleNotifications(event)">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                    </button>
+                </div>
+                <div class="relative">
+                    <button id="settingsButton" class="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleSettingsDropdown()">
+                        <i class="fas fa-cog text-xl"></i>
+                    </button>
+                    <!-- Settings Dropdown Menu -->
+                    <div id="settingsDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 hidden z-20">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2 text-gray-600"></i> Settings
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-file-invoice-dollar mr-2 text-gray-600"></i> Billing & Subscription
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-users mr-2 text-gray-600"></i> System Users
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-clipboard-list mr-2 text-gray-600"></i> System Logs
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2 text-gray-600"></i> Features & Bug Report
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-headset mr-2 text-gray-600"></i> Contact Support
+                        </a>
+                        <hr class="my-2">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-sign-out-alt mr-2 text-gray-600"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="fixed top-16 right-0 h-full w-80 bg-white shadow-xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800">Notifications</h2>
+                <button onclick="closeNotifications(event)" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto h-full pb-20">
+            <div class="p-4">
+                <div class="space-y-4">
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-red-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New user registered</p>
+                                <p class="text-sm text-gray-500">John Doe has registered for the 20Mbps plan</p>
+                                <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">New</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i class="fas fa-money-bill text-green-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">Payment received</p>
+                                <p class="text-sm text-gray-500">₦15,000 received from Jane Smith</p>
+                                <p class="text-xs text-gray-400 mt-1">5 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-ticket-alt text-blue-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New support ticket</p>
+                                <p class="text-sm text-gray-500">Robert Johnson opened a new ticket</p>
+                                <p class="text-xs text-gray-400 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <button class="w-full py-2 text-center text-sm text-gray-500 hover:text-gray-700">
+                <i class="fas fa-history mr-1"></i> View all notifications
+            </button>
+        </div>
+    </div>
+
+    <div class="pt-16">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar bg-white shadow-md fixed">
+            <div class="p-4">
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Dashboard</h2>
+                    <ul>
+                        <li>
+                            <a href="isp.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-home mr-3 text-gray-600"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Users</h2>
+                    <ul>
+                        <li>
+                            <a href="active-users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-signal mr-3 text-gray-600"></i>
+                                <span class="nav-text">Active Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-users mr-3 text-gray-600"></i>
+                                <span class="nav-text">Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tickets.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Tickets</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">15</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="leads.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-user-plus mr-3 text-gray-600"></i>
+                                <span class="nav-text">Leads</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Finance</h2>
+                    <ul>
+                        <li>
+                            <a href="#" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg" onclick="scrollToSection('packages-section'); return false;">
+                                <i class="fas fa-box mr-3 text-gray-600"></i>
+                                <span class="nav-text">Packages</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg" onclick="scrollToSection('payments-section'); return false;">
+                                <i class="fas fa-money-bill-wave mr-3 text-gray-600"></i>
+                                <span class="nav-text">Payments</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg" onclick="scrollToSection('vouchers-section'); return false;">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Vouchers</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg" onclick="scrollToSection('expenses-section'); return false;">
+                                <i class="fas fa-file-invoice-dollar mr-3 text-gray-600"></i>
+                                <span class="nav-text">Expenses</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Communication</h2>
+                    <ul>
+                        <li>
+                            <a href="sms.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-sms mr-3 text-gray-600"></i>
+                                <span class="nav-text">Sms</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="emails.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-envelope mr-3 text-gray-600"></i>
+                                <span class="nav-text">Emails</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Devices</h2>
+                    <ul>
+                        <li>
+                            <a href="#" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg" onclick="scrollToSection('mikrotik-section'); return false;">
+                                <i class="fas fa-network-wired mr-3 text-gray-600"></i>
+                                <span class="nav-text">MikroTik</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg" onclick="scrollToSection('equipment-section'); return false;">
+                                <i class="fas fa-server mr-3 text-gray-600"></i>
+                                <span class="nav-text">Equipment</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content p-6 pt-6">
+            <!-- Packages Section -->
+            <div id="packages-section" class="mb-12">
+                <div class="bg-white rounded-xl shadow-md mb-6">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-2xl font-bold text-gray-800 mb-2">Packages</h1>
+                                <p class="text-gray-600">Manage internet packages, assign plans, and monitor bandwidth usage.</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium flex items-center">
+                                    <i class="fas fa-book mr-2"></i>
+                                    Package Guide
+                                </button>
+                                <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    Create Package
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Package Type Filters -->
+                    <div class="p-6 pt-0">
+                        <div class="flex flex-wrap gap-4 mb-6">
+                            <button class="px-4 py-2 text-red-600 border-b-2 border-red-600 font-medium package-sub-tab" onclick="showPackageSubTab(event, 'all')">
+                                All
+                                <span class="ml-2 bg-red-100 text-red-800 rounded-full px-2 py-1 text-xs">5</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 package-sub-tab" onclick="showPackageSubTab(event, 'hotspot')">
+                                Hotspot
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">10</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 package-sub-tab" onclick="showPackageSubTab(event, 'pppoe')">
+                                PPPOE
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">0</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 package-sub-tab" onclick="showPackageSubTab(event, 'dataplan')">
+                                Data Plans (Beta)
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">2</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 package-sub-tab" onclick="showPackageSubTab(event, 'freetrial')">
+                                Free Trial
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">1</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Packages Table -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-white">
+                                        <tr>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name <i class="fas fa-chevron-down text-xs"></i></th>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price <i class="fas fa-chevron-down text-xs"></i></th>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Speed <i class="fas fa-chevron-down text-xs"></i></th>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time <i class="fas fa-chevron-down text-xs"></i></th>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type <i class="fas fa-chevron-down text-xs"></i></th>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Devices <i class="fas fa-chevron-down text-xs"></i></th>
+                                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enabled <i class="fas fa-chevron-down text-xs"></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <!-- Sample data rows -->
+                                        <tr>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">20Mbps Plan</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">₦15,000/month</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">20 Mbps</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Unlimited</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Hotspot</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">5</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Yes
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">50Mbps Plan</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">₦25,000/month</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">50 Mbps</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Unlimited</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Hotspot</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">10</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Yes
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">100Mbps Plan</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">₦40,000/month</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">100 Mbps</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Unlimited</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">PPPOE</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">15</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Yes
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Basic Data Plan</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">₦5,000/week</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">10 Mbps</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">10GB</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Data Plans (Beta)</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">1</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Yes
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Free Trial Plan</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Free</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">5 Mbps</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">1 Day</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">Free Trial</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">1</td>
+                                            <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Yes
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination Controls -->
+                            <div class="flex items-center justify-end border-t border-gray-200 px-4 py-3 sm:px-6 mt-6">
+                                <div class="flex flex-1 justify-end">
+                                    <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Payments Section -->
+            <div id="payments-section" class="mb-12">
+                <div class="bg-white rounded-xl shadow-md mb-6">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-2xl font-bold text-gray-800 mb-2">Payments</h1>
+                                <p class="text-gray-600">Track and manage customer payments and subscriptions.</p>
+                            </div>
+                            <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center">
+                                <i class="fas fa-plus mr-2"></i>
+                                Record Payment
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Payments Summary Boxes -->
+                    <div class="p-6 pt-0">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm text-gray-600">Daily Earnings</p>
+                                        <h3 class="text-xl font-bold text-gray-800">₦ 0.00</h3>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-red-100 text-red-600">
+                                        <i class="fas fa-calendar-day"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm text-gray-600">Weekly Earnings</p>
+                                        <h3 class="text-xl font-bold text-gray-800">₦ 0.00</h3>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-red-100 text-red-600">
+                                        <i class="fas fa-calendar-week"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm text-gray-600">Monthly Earnings</p>
+                                        <h3 class="text-xl font-bold text-gray-800">₦ 0.00</h3>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-red-100 text-red-600">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Payment Type Filters -->
+                        <div class="flex flex-wrap gap-4 mb-6">
+                            <button class="px-4 py-2 text-red-600 border-b-2 border-red-600 font-medium" onclick="filterPayments(event, 'all')">
+                                All Payments
+                                <span class="ml-2 bg-red-100 text-red-800 rounded-full px-2 py-1 text-xs">0</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="filterPayments(event, 'checked')">
+                                Checked
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">0</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="filterPayments(event, 'unchecked')">
+                                Unchecked
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">0</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Payments Table -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-white">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt No. <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Checked <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid At <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <!-- Sample data rows -->
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination Controls -->
+                            <div class="flex items-center justify-end border-t border-gray-200 px-4 py-3 sm:px-6 mt-6">
+                                <div class="flex flex-1 justify-end">
+                                    <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Vouchers Section -->
+            <div id="vouchers-section" class="mb-12">
+                <div class="bg-white rounded-xl shadow-md mb-6">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-2xl font-bold text-gray-800 mb-2">Vouchers</h1>
+                                <p class="text-gray-600">Generate and manage internet access vouchers.</p>
+                            </div>
+                            <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center">
+                                <i class="fas fa-plus mr-2"></i>
+                                Generate Voucher
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Voucher Type Filters -->
+                    <div class="p-6 pt-0">
+                        <div class="flex flex-wrap gap-4 mb-6">
+                            <button class="px-4 py-2 text-red-600 border-b-2 border-red-600 font-medium" onclick="filterVouchers(event, 'all')">
+                                All Vouchers
+                                <span class="ml-2 bg-red-100 text-red-800 rounded-full px-2 py-1 text-xs">0</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="filterVouchers(event, 'unused')">
+                                Unused
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">0</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="filterVouchers(event, 'used')">
+                                Used
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">0</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Vouchers Table -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-white">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Used <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <!-- Sample data rows -->
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination Controls -->
+                            <div class="flex items-center justify-end border-t border-gray-200 px-4 py-3 sm:px-6 mt-6">
+                                <div class="flex flex-1 justify-end">
+                                    <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Expenses Section -->
+            <div id="expenses-section" class="mb-12">
+                <div class="bg-white rounded-xl shadow-md mb-6">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-2xl font-bold text-gray-800 mb-2">Expenses</h1>
+                                <p class="text-gray-600">Track and manage business expenses.</p>
+                            </div>
+                            <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center">
+                                <i class="fas fa-plus mr-2"></i>
+                                Record Expense
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Expenses Summary Boxes -->
+                    <div class="p-6 pt-0">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm text-gray-600">Daily Expenses</p>
+                                        <h3 class="text-xl font-bold text-gray-800">₦ 0.00</h3>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-red-100 text-red-600">
+                                        <i class="fas fa-calendar-day"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm text-gray-600">Weekly Expenses</p>
+                                        <h3 class="text-xl font-bold text-gray-800">₦ 0.00</h3>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-red-100 text-red-600">
+                                        <i class="fas fa-calendar-week"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-red-50 rounded-lg p-4 border border-red-100">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="text-sm text-gray-600">Monthly Expenses</p>
+                                        <h3 class="text-xl font-bold text-gray-800">₦ 0.00</h3>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-red-100 text-red-600">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Expenses Table -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-white">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt No. <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date <i class="fas fa-chevron-down text-xs ml-1 align-middle"></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <!-- Sample data rows -->
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination Controls -->
+                            <div class="flex items-center justify-end border-t border-gray-200 px-4 py-3 sm:px-6 mt-6">
+                                <div class="flex flex-1 justify-end">
+                                    <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mikrotik Section -->
+            <div id="mikrotik-section" class="mb-12">
+                <div class="bg-white rounded-xl shadow-md mb-6">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h1 class="text-2xl font-bold text-gray-800">MikroTik Devices</h1>
+                                <p class="text-gray-600">Manage and monitor your MikroTik network devices.</p>
+                            </div>
+                            <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-link mr-2"></i> Link Mikrotik
+                            </button>
+                        </div>
+                        
+                        <!-- Mikrotik Type Filters -->
+                        <div class="flex flex-wrap gap-4 mb-6">
+                            <button class="px-4 py-2 text-red-600 border-b-2 border-red-600 font-medium rounded-lg bg-red-50" onclick="showMikrotikSubTab(event, 'all')">
+                                All
+                                <span class="ml-2 bg-red-100 text-red-800 rounded-full px-2 py-1 text-xs">2</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 rounded-lg" onclick="showMikrotikSubTab(event, 'online')">
+                                Online
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">1</span>
+                            </button>
+                            <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300 rounded-lg" onclick="showMikrotikSubTab(event, 'offline')">
+                                Offline
+                                <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">1</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Mikrotik Devices Table -->
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-white">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board Name</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provisioning</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPU</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memory</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remote Winbox</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <!-- Sample data rows -->
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">RB4011iGS+</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Complete</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">12%</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">256MB / 512MB</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Online</span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <button class="text-red-600 hover:text-red-800">
+                                                    <i class="fas fa-external-link-alt"></i> Connect
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">RB3011UiAS</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Pending</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                <span class="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">Offline</span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <button class="text-red-600 hover:text-red-800">
+                                                    <i class="fas fa-external-link-alt"></i> Connect
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination Controls -->
+                            <div class="flex items-center justify-end border-t border-gray-200 px-4 py-3 sm:px-6 mt-6">
+                                <div class="flex flex-1 justify-end">
+                                    <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Equipment Section -->
+            <div id="equipment-section">
+                <div class="bg-white rounded-xl shadow-md mb-6">
+                    <div class="p-6">
+                        <div class="mb-6">
+                            <h1 class="text-2xl font-bold text-gray-800">Equipment Management</h1>
+                            <p class="text-gray-600">Manage and monitor your network equipment and devices.</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-lg font-bold text-gray-800">Equipment Overview</h2>
+                                    <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">
+                                        <i class="fas fa-sync mr-2"></i> Refresh
+                                    </button>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-lg bg-red-100 text-red-600 mr-3">
+                                                <i class="fas fa-server"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-medium">Main Server</h3>
+                                                <p class="text-gray-500 text-sm">Dell PowerEdge R740</p>
+                                            </div>
+                                        </div>
+                                        <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Online</span>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-lg bg-blue-100 text-blue-600 mr-3">
+                                                <i class="fas fa-database"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-medium">Database Server</h3>
+                                                <p class="text-gray-500 text-sm">HP ProLiant DL380</p>
+                                            </div>
+                                        </div>
+                                        <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Online</span>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-lg bg-yellow-100 text-yellow-600 mr-3">
+                                                <i class="fas fa-wifi"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="font-medium">Access Point</h3>
+                                                <p class="text-gray-500 text-sm">Ubiquiti UniFi AP-AC-Pro</p>
+                                            </div>
+                                        </div>
+                                        <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Online</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                                <h2 class="text-lg font-bold text-gray-800 mb-4">Quick Actions</h2>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <button class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                        <div class="p-3 rounded-full bg-red-100 text-red-600 mb-2">
+                                            <i class="fas fa-plug"></i>
+                                        </div>
+                                        <span class="text-sm font-medium">Restart Equipment</span>
+                                    </button>
+                                    
+                                    <button class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                        <div class="p-3 rounded-full bg-blue-100 text-blue-600 mb-2">
+                                            <i class="fas fa-download"></i>
+                                        </div>
+                                        <span class="text-sm font-medium">Backup Config</span>
+                                    </button>
+                                    
+                                    <button class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                        <div class="p-3 rounded-full bg-green-100 text-green-600 mb-2">
+                                            <i class="fas fa-upload"></i>
+                                        </div>
+                                        <span class="text-sm font-medium">Restore Config</span>
+                                    </button>
+                                    
+                                    <button class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                        <div class="p-3 rounded-full bg-purple-100 text-purple-600 mb-2">
+                                            <i class="fas fa-plus"></i>
+                                        </div>
+                                        <span class="text-sm font-medium">Add Equipment</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                                <h2 class="text-lg font-bold text-gray-800 mb-4">System Information</h2>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Total Equipment</span>
+                                        <span class="font-medium">12</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Online</span>
+                                        <span class="font-medium">10</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Offline</span>
+                                        <span class="font-medium">2</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Maintenance</span>
+                                        <span class="font-medium">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                                <h2 class="text-lg font-bold text-gray-800 mb-4">Network Status</h2>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Main Link</span>
+                                        <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Up</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Backup Link</span>
+                                        <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Up</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Internal Network</span>
+                                        <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Up</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Wireless Network</span>
+                                        <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded">Degraded</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                                <h2 class="text-lg font-bold text-gray-800 mb-4">Recent Alerts</h2>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Switch Port Down</span>
+                                        <span class="text-xs text-gray-500">2 hours ago</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">High CPU Usage</span>
+                                        <span class="text-xs text-gray-500">5 hours ago</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Memory Low</span>
+                                        <span class="text-xs text-gray-500">1 day ago</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-500">Disk Space Warning</span>
+                                        <span class="text-xs text-gray-500">2 days ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                            <h2 class="text-lg font-bold text-gray-800 mb-4">Equipment Inventory</h2>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Equipment</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Seen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Main Router</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Router</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.1</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Online
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Just now</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Backup Router</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Router</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.2</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Online
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Just now</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Core Switch</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Switch</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.10</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Online
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Just now</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Access Point 1</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Wireless</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.20</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    Online
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Just now</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Access Point 2</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Wireless</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.21</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                    Degraded
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">5 minutes ago</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>    </div>
+</body>
+</html>

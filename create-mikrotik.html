@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create MikroTik - ISP System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#dc2626',
+                        secondary: '#000000',
+                        accent: '#ffffff'
+                    }
+                }
+            }
+        }
+        
+        // Function to toggle settings dropdown
+        function toggleSettingsDropdown() {
+            const dropdown = document.getElementById('settingsDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const settingsButton = document.getElementById('settingsButton');
+            const dropdown = document.getElementById('settingsDropdown');
+            
+            if (dropdown && settingsButton && 
+                !settingsButton.contains(event.target) && 
+                !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Function to toggle notification panel
+        function toggleNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Remove the translate-x-full class to show the panel
+            notificationPanel.classList.remove('translate-x-full');
+        }
+        
+        // Function to close notification panel
+        function closeNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Add the translate-x-full class to hide the panel
+            notificationPanel.classList.add('translate-x-full');
+        }
+        
+        // Close notification panel when clicking outside
+        document.addEventListener('click', function(event) {
+            const notificationPanel = document.getElementById('notificationPanel');
+            const notificationButton = document.getElementById('notificationButton');
+            
+            // Check if click is outside the notification panel and not on the notification button
+            if (notificationPanel && notificationButton && 
+                !notificationPanel.contains(event.target) && 
+                !notificationButton.contains(event.target)) {
+                // Close the panel (add translate-x-full class to move it off-screen)
+                notificationPanel.classList.add('translate-x-full');
+            }
+        });
+        
+        // Add this function to handle sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // Save sidebar state to localStorage
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            
+            // Change icon based on sidebar state
+            if (isCollapsed) {
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to apply saved sidebar state
+        function applySidebarState() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            // Check if sidebar state is saved in localStorage
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                sidebar.classList.remove('collapsed');
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Multi-step form navigation
+        function showStep(stepNumber) {
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.add('hidden');
+            });
+            
+            // Show the selected step
+            document.getElementById(`step${stepNumber}`).classList.remove('hidden');
+            
+            // Update progress indicators
+            updateProgress(stepNumber);
+        }
+        
+        function updateProgress(currentStep) {
+            // Update step indicators
+            document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+                const stepNum = index + 1;
+                if (stepNum < currentStep) {
+                    indicator.classList.add('bg-green-500', 'text-white');
+                    indicator.classList.remove('bg-gray-200', 'text-gray-700');
+                    indicator.innerHTML = '<i class="fas fa-check"></i>';
+                } else if (stepNum === currentStep) {
+                    indicator.classList.add('bg-red-600', 'text-white');
+                    indicator.classList.remove('bg-gray-200', 'text-gray-700');
+                    indicator.textContent = stepNum;
+                } else {
+                    indicator.classList.add('bg-gray-200', 'text-gray-700');
+                    indicator.classList.remove('bg-red-600', 'text-white', 'bg-green-500');
+                    indicator.textContent = stepNum;
+                }
+            });
+        }
+        
+        // Form validation and navigation
+        function nextStep(currentStep) {
+            if (currentStep === 1) {
+                // Validate step 1
+                const mikrotikIdentity = document.getElementById('mikrotikIdentity').value.trim();
+                if (!mikrotikIdentity) {
+                    alert('Please enter a Mikrotik identity');
+                    return;
+                }
+            } else if (currentStep === 2) {
+                // Validate step 2
+                const provisioningCommand = document.getElementById('provisioningCommand').value.trim();
+                if (!provisioningCommand) {
+                    alert('Please enter a provisioning command');
+                    return;
+                }
+            }
+            
+            showStep(currentStep + 1);
+        }
+        
+        function prevStep(currentStep) {
+            showStep(currentStep - 1);
+        }
+        
+        // Apply sidebar state when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applySidebarState();
+        });
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+            width: 282px;
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+            top: 4rem;
+            z-index: 20;
+        }
+        .sidebar.collapsed {
+            width: 88px;
+        }
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+        .sidebar.collapsed .nav-badge {
+            display: none;
+        }
+        .sidebar.collapsed .section-title {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-toggle-icon {
+            transform: rotate(180deg);
+        }
+        .main-content {
+            transition: all 0.3s ease;
+            margin-left: 282px;
+        }
+        .sidebar.collapsed + .main-content {
+            margin-left: 88px;
+        }
+        .nav-link:hover {
+            background-color: #fef2f2;
+        }
+        .nav-link.active {
+            background-color: #fef2f2;
+        }
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md fixed w-full z-10">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-4">
+                <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 focus:outline-none" onclick="toggleSidebar()">
+                    <i id="sidebarIcon" class="fas fa-chevron-left text-xl"></i>
+                </button>
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">NeighborhoodNet</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search..." class="py-1 px-3 pl-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                    <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-sm"></i>
+                </div>
+                <div class="relative">
+                    <button id="notificationButton" class="relative p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleNotifications(event)">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                    </button>
+                </div>
+                <div class="relative">
+                    <button id="settingsButton" class="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleSettingsDropdown()">
+                        <i class="fas fa-cog text-xl"></i>
+                    </button>
+                    <!-- Settings Dropdown Menu -->
+                    <div id="settingsDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 hidden z-20">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2 text-gray-600"></i> Settings
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-file-invoice-dollar mr-2 text-gray-600"></i> Billing & Subscription
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-users mr-2 text-gray-600"></i> System Users
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-clipboard-list mr-2 text-gray-600"></i> System Logs
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2 text-gray-600"></i> Features & Bug Report
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-headset mr-2 text-gray-600"></i> Contact Support
+                        </a>
+                        <hr class="my-2">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-sign-out-alt mr-2 text-gray-600"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="fixed top-16 right-0 h-full w-80 bg-white shadow-xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800">Notifications</h2>
+                <button onclick="closeNotifications(event)" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto h-full pb-20">
+            <div class="p-4">
+                <div class="space-y-4">
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-red-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New user registered</p>
+                                <p class="text-sm text-gray-500">John Doe has registered for the 20Mbps plan</p>
+                                <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">New</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i class="fas fa-money-bill text-green-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">Payment received</p>
+                                <p class="text-sm text-gray-500">₦15,000 received from Jane Smith</p>
+                                <p class="text-xs text-gray-400 mt-1">5 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-ticket-alt text-blue-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New support ticket</p>
+                                <p class="text-sm text-gray-500">Robert Johnson opened a new ticket</p>
+                                <p class="text-xs text-gray-400 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <button class="w-full py-2 text-center text-sm text-gray-500 hover:text-gray-700">
+                <i class="fas fa-history mr-1"></i> View all notifications
+            </button>
+        </div>
+    </div>
+
+    <div class="pt-16">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar bg-white shadow-md fixed">
+            <div class="p-4">
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Dashboard</h2>
+                    <ul>
+                        <li>
+                            <a href="isp.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-home mr-3 text-gray-600"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Users</h2>
+                    <ul>
+                        <li>
+                            <a href="active-users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-signal mr-3 text-gray-600"></i>
+                                <span class="nav-text">Active Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">3</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-users mr-3 text-gray-600"></i>
+                                <span class="nav-text">Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tickets.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Tickets</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">15</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="leads.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-user-plus mr-3 text-gray-600"></i>
+                                <span class="nav-text">Leads</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">3</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Finance</h2>
+                    <ul>
+                        <li>
+                            <a href="packages.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-box mr-3 text-gray-600"></i>
+                                <span class="nav-text">Packages</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="payments.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-money-bill-wave mr-3 text-gray-600"></i>
+                                <span class="nav-text">Payments</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="vouchers.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Vouchers</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="expenses.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-file-invoice-dollar mr-3 text-gray-600"></i>
+                                <span class="nav-text">Expenses</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Communication</h2>
+                    <ul>
+                        <li>
+                            <a href="sms.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-sms mr-3 text-gray-600"></i>
+                                <span class="nav-text">Sms</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="emails.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-envelope mr-3 text-gray-600"></i>
+                                <span class="nav-text">Emails</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Devices</h2>
+                    <ul>
+                        <li>
+                            <a href="mikrotik.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-network-wired mr-3 text-gray-600"></i>
+                                <span class="nav-text">MikroTik</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="equipment.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-server mr-3 text-gray-600"></i>
+                                <span class="nav-text">Equipment</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">3</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content p-6 pt-6">
+            <div class="flex flex-col md:flex-row">
+                <!-- Main Content Area -->
+                <div class="md:w-full">
+                    <div class="bg-white rounded-xl shadow-md mb-6">
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <h1 class="text-2xl font-bold text-gray-800">Create MikroTik Device</h1>
+                                    <p class="text-gray-600">Set up a new MikroTik device with our provisioning system.</p>
+                                </div>
+                                <a href="mikrotik.html" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                                    <i class="fas fa-arrow-left mr-2"></i> Back to MikroTik
+                                </a>
+                            </div>
+                            
+                            <!-- Progress Steps -->
+                            <div class="mb-8">
+                                <div class="flex justify-center relative space-x-24">
+                                    <!-- Progress line -->
+                                    <div class="absolute top-4 left-12 right-12 h-0.5 bg-gray-200 z-0"></div>
+                                    <div class="absolute top-4 left-12 w-1/3 h-0.5 bg-red-600 z-10 w-24"></div>
+                                    
+                                    <!-- Step indicators -->
+                                    <div class="relative z-20 flex flex-col items-center">
+                                        <div class="step-indicator w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center text-sm font-medium">
+                                            1
+                                        </div>
+                                        <span class="text-xs font-medium text-gray-700 mt-2">Connection</span>
+                                    </div>
+                                    
+                                    <div class="relative z-20 flex flex-col items-center">
+                                        <div class="step-indicator w-8 h-8 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-sm font-medium">
+                                            2
+                                        </div>
+                                        <span class="text-xs font-medium text-gray-700 mt-2">Device Details</span>
+                                    </div>
+                                    
+                                    <div class="relative z-20 flex flex-col items-center">
+                                        <div class="step-indicator w-8 h-8 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center text-sm font-medium">
+                                            3
+                                        </div>
+                                        <span class="text-xs font-medium text-gray-700 mt-2">Service Setup</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 1: Connection -->
+                            <div id="step1" class="step">
+                                <div class="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
+                                    <h2 class="text-xl font-bold text-gray-800 mb-4">Step 1: Connection</h2>
+                                    <p class="text-gray-600 mb-6">Enter basic device information to establish connection.</p>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Mikrotik Identity *</label>
+                                            <input type="text" id="mikrotikIdentity" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter Mikrotik identity">
+                                            <p class="text-xs text-gray-500 mt-1">The identity name of your Mikrotik device (System → Identity)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end">
+                                    <button onclick="nextStep(1)" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">
+                                        Next: Device Details <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 2: Device Details -->
+                            <div id="step2" class="step hidden">
+                                <div class="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
+                                    <h2 class="text-xl font-bold text-gray-800 mb-4">Step 2: Device Details</h2>
+                                    <p class="text-gray-600 mb-6">Enter provisioning command for the device.</p>
+                                    
+                                    <div class="mb-6">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <label class="block text-sm font-medium text-gray-700">Provisioning Command *</label>
+                                            <button onclick="copyProvisioningCommand()" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-2 py-1 rounded flex items-center">
+                                                <i class="fas fa-copy mr-1"></i> Copy
+                                            </button>
+                                        </div>
+                                        <textarea id="provisioningCommand" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm bg-black text-green-400" rows="5" placeholder="Enter provisioning command">/tool fetch mode=https url="https://accessnet.centipidtechnologies.com/provision/eyJpdiI6IkpBWXFHdkFhQ3N4d214c04xRjF2T2c9PSIsInZhbHVlIjoiTWdxSGJGbklLV293NkJxVzkvcWxHdz09IiwibWFjIjoiNzQwOWZjNDc0NjVmZDQxMTMxNGNlNzA2ZGIyMzc4Mjc5YzA3NjUwMGFjZjQ3MTI4MjY1NTNkNjMxZTk4ODIzZiIsInRhZyI6IiJ9" dst-path=centipid.rsc;:delay 2s;/import centipid.rsc;</textarea>
+                                        <p class="text-xs text-gray-500 mt-1">This command will be executed on the device to set up basic configuration.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-between">
+                                    <button onclick="prevStep(2)" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+                                        <i class="fas fa-arrow-left mr-2"></i> Previous
+                                    </button>
+                                    <button onclick="nextStep(2)" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg">
+                                        Next: Service Setup <i class="fas fa-arrow-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 3: Service Setup -->
+                            <div id="step3" class="step hidden">
+                                <div class="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
+                                    <h2 class="text-xl font-bold text-gray-800 mb-4">Step 3: Service Setup</h2>
+                                    <p class="text-gray-600 mb-6">Configure PPPoE and Hotspot services for the device.</p>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h3 class="font-bold text-gray-800 mb-3">PPPoE Configuration</h3>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Pool Name</label>
+                                                    <input type="text" id="pppoePoolName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter pool name">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">IP Range</label>
+                                                    <input type="text" id="pppoeIpRange" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g., 192.168.10.2-192.168.10.254">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">DNS Servers</label>
+                                                    <input type="text" id="pppoeDns" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g., 8.8.8.8,8.8.4.4">
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <a href="configure-pppoe.html" class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                                    <i class="fas fa-cog mr-1"></i> Advanced PPPoE Configuration
+                                                </a>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="border border-gray-200 rounded-lg p-4">
+                                            <h3 class="font-bold text-gray-800 mb-3">Hotspot Configuration</h3>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Profile Name</label>
+                                                    <input type="text" id="hotspotProfileName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="Enter profile name">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">IP Range</label>
+                                                    <input type="text" id="hotspotIpRange" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g., 192.168.20.2-192.168.20.254">
+                                                </div>
+                                                
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Login Page</label>
+                                                    <input type="text" id="hotspotLoginPage" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500" placeholder="e.g., http://login.example.com">
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <a href="configure-hotspot.html" class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                                    <i class="fas fa-cog mr-1"></i> Advanced Hotspot Configuration
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center mb-4">
+                                        <input type="checkbox" id="enableServices" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                                        <label for="enableServices" class="ml-2 block text-sm text-gray-700">
+                                            Enable services immediately after provisioning
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-between">
+                                    <button onclick="prevStep(3)" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+                                        <i class="fas fa-arrow-left mr-2"></i> Previous
+                                    </button>
+                                    <button onclick="submitForm()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                                        <i class="fas fa-check mr-2"></i> Create MikroTik
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Form submission
+        function submitForm() {
+            // In a real application, this would submit the form data to the server
+            alert('MikroTik device created successfully!');
+            window.location.href = 'mikrotik.html';
+        }
+        
+        // Copy provisioning command to clipboard
+        function copyProvisioningCommand() {
+            const provisioningCommand = document.getElementById('provisioningCommand');
+            provisioningCommand.select();
+            document.execCommand('copy');
+            
+            // Show feedback to user
+            const copyButton = event.target.closest('button');
+            const originalText = copyButton.innerHTML;
+            copyButton.innerHTML = '<i class="fas fa-check mr-1"></i> Copied!';
+            
+            setTimeout(() => {
+                copyButton.innerHTML = originalText;
+            }, 2000);
+        }
+        
+        // Initialize the first step
+        document.addEventListener('DOMContentLoaded', function() {
+            showStep(1);
+        });
+    </script>
+</body>
+</html>

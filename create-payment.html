@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Payment - ISP Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#dc2626',
+                        secondary: '#000000',
+                        accent: '#ffffff'
+                    }
+                }
+            }
+        }
+        
+        // Function to toggle settings dropdown
+        function toggleSettingsDropdown() {
+            const dropdown = document.getElementById('settingsDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const settingsButton = document.getElementById('settingsButton');
+            const dropdown = document.getElementById('settingsDropdown');
+            
+            if (dropdown && settingsButton && 
+                !settingsButton.contains(event.target) && 
+                !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Function to toggle notification panel
+        function toggleNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Remove the translate-x-full class to show the panel
+            notificationPanel.classList.remove('translate-x-full');
+        }
+        
+        // Function to close notification panel
+        function closeNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Add the translate-x-full class to hide the panel
+            notificationPanel.classList.add('translate-x-full');
+        }
+        
+        // Close notification panel when clicking outside
+        document.addEventListener('click', function(event) {
+            const notificationPanel = document.getElementById('notificationPanel');
+            const notificationButton = document.getElementById('notificationButton');
+            
+            // Check if click is outside the notification panel and not on the notification button
+            if (notificationPanel && notificationButton && 
+                !notificationPanel.contains(event.target) && 
+                !notificationButton.contains(event.target)) {
+                // Close the panel (add translate-x-full class to move it off-screen)
+                notificationPanel.classList.add('translate-x-full');
+            }
+        });
+        
+        // Add this function to handle sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // Save sidebar state to localStorage
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            
+            // Change icon based on sidebar state
+            if (isCollapsed) {
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to apply saved sidebar state
+        function applySidebarState() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            // Check if sidebar state is saved in localStorage
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                sidebar.classList.remove('collapsed');
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to submit the payment form
+        function submitPaymentForm() {
+            // Get form values
+            const user = document.getElementById('user').value;
+            const receiptNumber = document.getElementById('receiptNumber').value;
+            const amount = document.getElementById('amount').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const checked = document.querySelector('input[name="checked"]:checked').value;
+            
+            // Simple validation
+            if (!user || !receiptNumber || !amount || !paymentMethod || !checked) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            // In a real application, you would send this data to a server
+            // For now, we'll just show a success message
+            alert('Payment recorded successfully!');
+            
+            // Redirect back to payments page
+            window.location.href = 'payments.html';
+        }
+        
+        // Function to handle radio button selection
+        function setupRadioButtons() {
+            // Checked radio buttons
+            const checkedYes = document.querySelector('input[name="checked"][value="yes"]');
+            const checkedNo = document.querySelector('input[name="checked"][value="no"]');
+            const checkedYesIcon = document.querySelector('.checked-yes-icon');
+            const checkedNoIcon = document.querySelector('.checked-no-icon');
+            
+            // Initialize the radio buttons with correct styling
+            if (checkedYes.checked) {
+                checkedYesIcon.classList.remove('bg-green-100');
+                checkedYesIcon.classList.add('bg-green-500', 'text-white');
+            }
+            
+            // Add event listeners for checked radio buttons
+            checkedYes.addEventListener('change', function() {
+                if (this.checked) {
+                    checkedYesIcon.classList.remove('bg-green-100');
+                    checkedYesIcon.classList.add('bg-green-500', 'text-white');
+                    checkedNoIcon.classList.remove('bg-red-500', 'text-white');
+                    checkedNoIcon.classList.add('bg-red-100');
+                }
+            });
+            
+            checkedNo.addEventListener('change', function() {
+                if (this.checked) {
+                    checkedNoIcon.classList.remove('bg-red-100');
+                    checkedNoIcon.classList.add('bg-red-500', 'text-white');
+                    checkedYesIcon.classList.remove('bg-green-500', 'text-white');
+                    checkedYesIcon.classList.add('bg-green-100');
+                }
+            });
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applySidebarState();
+            setupRadioButtons();
+        });
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+            width: 282px;
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+            top: 4rem;
+            z-index: 20;
+        }
+        .sidebar.collapsed {
+            width: 88px;
+        }
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+        .sidebar.collapsed .nav-badge {
+            display: none;
+        }
+        .sidebar.collapsed .section-title {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-toggle-icon {
+            transform: rotate(180deg);
+        }
+        .main-content {
+            transition: all 0.3s ease;
+            margin-left: 282px;
+        }
+        .sidebar.collapsed + .main-content {
+            margin-left: 88px;
+        }
+        .nav-link:hover {
+            background-color: #fef2f2;
+        }
+        .nav-link.active {
+            background-color: #fef2f2;
+        }
+        .stat-card {
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        /* Radio button styling */
+        .radio-icon.selected {
+            background-color: #dc2626;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md fixed w-full z-10">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-4">
+                <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 focus:outline-none" onclick="toggleSidebar()">
+                    <i id="sidebarIcon" class="fas fa-chevron-left text-xl"></i>
+                </button>
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">NeighborhoodNet</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search..." class="py-1 px-3 pl-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                    <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-sm"></i>
+                </div>
+                <div class="relative">
+                    <button id="notificationButton" class="relative p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleNotifications(event)">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                    </button>
+                </div>
+                <div class="relative">
+                    <button id="settingsButton" class="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleSettingsDropdown()">
+                        <i class="fas fa-cog text-xl"></i>
+                    </button>
+                    <!-- Settings Dropdown Menu -->
+                    <div id="settingsDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 hidden z-20">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2 text-gray-600"></i> Settings
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-file-invoice-dollar mr-2 text-gray-600"></i> Billing & Subscription
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-users mr-2 text-gray-600"></i> System Users
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-clipboard-list mr-2 text-gray-600"></i> System Logs
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2 text-gray-600"></i> Features & Bug Report
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-headset mr-2 text-gray-600"></i> Contact Support
+                        </a>
+                        <hr class="my-2">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-sign-out-alt mr-2 text-gray-600"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="fixed top-16 right-0 h-full w-80 bg-white shadow-xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800">Notifications</h2>
+                <button onclick="closeNotifications(event)" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto h-full pb-20">
+            <div class="p-4">
+                <div class="space-y-4">
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-red-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New user registered</p>
+                                <p class="text-sm text-gray-500">John Doe has registered for the 20Mbps plan</p>
+                                <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">New</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i class="fas fa-money-bill text-green-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">Payment received</p>
+                                <p class="text-sm text-gray-500">₦15,000 received from Jane Smith</p>
+                                <p class="text-xs text-gray-400 mt-1">5 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-ticket-alt text-blue-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New support ticket</p>
+                                <p class="text-sm text-gray-500">Robert Johnson opened a new ticket</p>
+                                <p class="text-xs text-gray-400 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">Service alert</p>
+                                <p class="text-sm text-gray-500">Network performance degradation detected</p>
+                                <p class="text-xs text-gray-400 mt-1">2 days ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                    <i class="fas fa-server text-purple-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">System update</p>
+                                <p class="text-sm text-gray-500">Scheduled maintenance completed successfully</p>
+                                <p class="text-xs text-gray-400 mt-1">3 days ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <button class="w-full py-2 text-center text-sm text-gray-500 hover:text-gray-700">
+                <i class="fas fa-history mr-1"></i> View all notifications
+            </button>
+        </div>
+    </div>
+
+    <div class="pt-16">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar bg-white shadow-md fixed">
+            <div class="p-4">
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Dashboard</h2>
+                    <ul>
+                        <li>
+                            <a href="isp.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-home mr-3 text-gray-600"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Users</h2>
+                    <ul>
+                        <li>
+                            <a href="active-users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-signal mr-3 text-gray-600"></i>
+                                <span class="nav-text">Active Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-users mr-3 text-gray-600"></i>
+                                <span class="nav-text">Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tickets.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Tickets</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">15</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="leads.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-user-plus mr-3 text-gray-600"></i>
+                                <span class="nav-text">Leads</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Finance</h2>
+                    <ul>
+                        <li>
+                            <a href="packages.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-box mr-3 text-gray-600"></i>
+                                <span class="nav-text">Packages</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="payments.html" class="nav-link active flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-money-bill-wave mr-3 text-gray-600"></i>
+                                <span class="nav-text">Payments</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="vouchers.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Vouchers</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="expenses.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-file-invoice-dollar mr-3 text-gray-600"></i>
+                                <span class="nav-text">Expenses</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Communication</h2>
+                    <ul>
+                        <li>
+                            <a href="sms.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-sms mr-3 text-gray-600"></i>
+                                <span class="nav-text">Sms</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="emails.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-envelope mr-3 text-gray-600"></i>
+                                <span class="nav-text">Emails</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Devices</h2>
+                    <ul>
+                        <li>
+                            <a href="mikrotik.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-network-wired mr-3 text-gray-600"></i>
+                                <span class="nav-text">MikroTik</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="equipment.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-server mr-3 text-gray-600"></i>
+                                <span class="nav-text">Equipment</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content p-6 pt-6">
+            <div class="flex flex-col md:flex-row">
+                <!-- Main Content Area -->
+                <div class="md:w-full">
+                    <div class="bg-white rounded-xl shadow-md mb-6">
+                        <div class="p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h1 class="text-2xl font-bold text-gray-800 mb-2">Record Payment</h1>
+                                    <p class="text-gray-600">Record a new payment from a user</p>
+                                </div>
+                                <a href="payments.html" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium flex items-center">
+                                    <i class="fas fa-arrow-left mr-2"></i>
+                                    Back to Payments
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Record Payment Form -->
+                        <div class="p-6 pt-0">
+                            <form id="createPaymentForm" onsubmit="event.preventDefault(); submitPaymentForm();">
+                                <div class="space-y-6">
+                                    <div>
+                                        <label for="user" class="block text-gray-700 font-medium mb-2">User* <span class="text-red-600">*</span></label>
+                                        <select id="user" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" required>
+                                            <option value="">Select an option</option>
+                                            <option value="john-doe">John Doe</option>
+                                            <option value="jane-smith">Jane Smith</option>
+                                            <option value="michael-johnson">Michael Johnson</option>
+                                            <option value="sarah-williams">Sarah Williams</option>
+                                            <option value="david-brown">David Brown</option>
+                                        </select>
+                                        <p class="text-gray-500 text-sm mt-1">Select the user who made the payment</p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="receiptNumber" class="block text-gray-700 font-medium mb-2">Receipt Number* <span class="text-red-600">*</span></label>
+                                        <input type="text" id="receiptNumber" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter the receipt number" required>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="amount" class="block text-gray-700 font-medium mb-2">Amount* <span class="text-red-600">*</span></label>
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">₦</span>
+                                            <input type="number" id="amount" class="w-full pl-8 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Enter the amount paid" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="paymentMethod" class="block text-gray-700 font-medium mb-2">Payment Method* <span class="text-red-600">*</span></label>
+                                        <select id="paymentMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" required>
+                                            <option value="">Select an option</option>
+                                            <option value="cash">Cash</option>
+                                            <option value="bank-transfer">Bank Transfer</option>
+                                            <option value="card">Card</option>
+                                            <option value="mobile-money">Mobile Money</option>
+                                            <option value="cheque">Cheque</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-gray-700 font-medium mb-2">Has this payment been checked?* <span class="text-red-600">*</span></label>
+                                        <p class="text-gray-500 text-sm mb-3">Click no if the system needs to check this payment and add a scheduler.</p>
+                                        <div class="flex space-x-4">
+                                            <label class="inline-flex items-center cursor-pointer">
+                                                <input type="radio" class="hidden" name="checked" value="yes" checked>
+                                                <span class="ml-2 flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600 mr-2 checked-yes-icon">
+                                                    <i class="fas fa-check"></i>
+                                                </span>
+                                                <span>Yes</span>
+                                            </label>
+                                            <label class="inline-flex items-center cursor-pointer">
+                                                <input type="radio" class="hidden" name="checked" value="no">
+                                                <span class="ml-2 flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-600 mr-2 checked-no-icon">
+                                                    <i class="fas fa-times"></i>
+                                                </span>
+                                                <span>No</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end space-x-3 mt-8">
+                                    <a href="payments.html" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</a>
+                                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Create</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

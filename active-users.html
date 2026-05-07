@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Users - ISP Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#dc2626',
+                        secondary: '#000000',
+                        accent: '#ffffff'
+                    }
+                }
+            }
+        }
+        
+        // Pagination variables
+        let currentPage = 1;
+        let rowsPerPage = 10;
+        let filteredRows = [];
+        
+        // Function to toggle dropdown menus
+        function toggleDropdown(dropdownId) {
+            try {
+                // Hide all other dropdowns
+                const allDropdowns = document.querySelectorAll('.origin-top-right');
+                allDropdowns.forEach(dropdown => {
+                    if (dropdown.id !== dropdownId) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+                
+                // Toggle the clicked dropdown
+                const targetDropdown = document.getElementById(dropdownId);
+                if (targetDropdown) {
+                    targetDropdown.classList.toggle('hidden');
+                } else {
+                    console.error('Dropdown with ID ' + dropdownId + ' not found');
+                }
+            } catch (error) {
+                console.error('Error toggling dropdown:', error);
+            }
+        }
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            try {
+                // Check if the click was on a dropdown button
+                const isDropdownButton = event.target.closest('[onclick*="toggleDropdown"]');
+                
+                // If not on a dropdown button, hide all dropdowns
+                if (!isDropdownButton) {
+                    const allDropdowns = document.querySelectorAll('.origin-top-right');
+                    allDropdowns.forEach(dropdown => {
+                        dropdown.classList.add('hidden');
+                    });
+                }
+            } catch (error) {
+                console.error('Error handling dropdown click outside:', error);
+            }
+        });
+        
+        // Function to toggle settings dropdown
+        function toggleSettingsDropdown() {
+            const dropdown = document.getElementById('settingsDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const settingsButton = document.getElementById('settingsButton');
+            const dropdown = document.getElementById('settingsDropdown');
+            
+            if (dropdown && settingsButton && 
+                !settingsButton.contains(event.target) && 
+                !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Function to toggle notification panel
+        function toggleNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Remove the translate-x-full class to show the panel
+            notificationPanel.classList.remove('translate-x-full');
+        }
+        
+        // Function to close notification panel
+        function closeNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Add the translate-x-full class to hide the panel
+            notificationPanel.classList.add('translate-x-full');
+        }
+        
+        // Close notification panel when clicking outside
+        document.addEventListener('click', function(event) {
+            const notificationPanel = document.getElementById('notificationPanel');
+            const notificationButton = document.getElementById('notificationButton');
+            
+            // Check if click is outside the notification panel and not on the notification button
+            if (notificationPanel && notificationButton && 
+                !notificationPanel.contains(event.target) && 
+                !notificationButton.contains(event.target)) {
+                // Close the panel (add translate-x-full class to move it off-screen)
+                notificationPanel.classList.add('translate-x-full');
+            }
+        });
+        
+        // Function to toggle filter dropdown
+        function toggleFilterDropdown() {
+            const dropdown = document.getElementById('filterDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close filter dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const filterButton = document.getElementById('filterButton');
+            const dropdown = document.getElementById('filterDropdown');
+            
+            if (dropdown && filterButton && 
+                !filterButton.contains(event.target) && 
+                !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Function to handle active users sub-tabs
+        function showActiveUsersSubTab(event, tabType) {
+            // Remove active class from all sub-tabs
+            const subTabs = document.querySelectorAll('.rounded-lg');
+            subTabs.forEach(tab => {
+                tab.classList.remove('bg-red-50', 'text-red-600');
+            });
+            
+            // Add active class to clicked sub-tab
+            event.target.closest('.rounded-lg').classList.add('bg-red-50', 'text-red-600');
+            
+            // Here you would typically filter the table content based on tabType
+            // For now, we'll just log to console to demonstrate the functionality
+            console.log('Showing ' + tabType + ' users');
+        }
+        
+        // Function to filter active users table
+        function filterActiveUsers(event, filterType) {
+            // Remove active class from all filter buttons
+            const filterButtons = document.querySelectorAll('.flex.flex-wrap.gap-4.mb-6 button');
+            filterButtons.forEach(button => {
+                button.classList.remove('text-red-600', 'border-red-600');
+                button.classList.add('text-gray-500', 'hover:text-gray-700', 'border-transparent', 'hover:border-gray-300');
+            });
+            
+            // Add active class to clicked filter button
+            event.target.closest('button').classList.remove('text-gray-500', 'hover:text-gray-700', 'border-transparent', 'hover:border-gray-300');
+            event.target.closest('button').classList.add('text-red-600', 'border-red-600');
+            
+            // Get all table rows except the header
+            const tableRows = document.querySelectorAll('tbody tr[data-user-type]');
+            
+            // Reset filtered rows array
+            filteredRows = [];
+            
+            // Filter rows based on filterType
+            if (filterType === 'all') {
+                tableRows.forEach(row => {
+                    filteredRows.push(row);
+                });
+            } else if (filterType === 'hotspot') {
+                // Show only hotspot users
+                tableRows.forEach(row => {
+                    if (row.getAttribute('data-user-type') === 'hotspot') {
+                        filteredRows.push(row);
+                    }
+                });
+            } else if (filterType === 'pppoe') {
+                // Show only PPPoE users
+                tableRows.forEach(row => {
+                    if (row.getAttribute('data-user-type') === 'pppoe') {
+                        filteredRows.push(row);
+                    }
+                });
+            }
+            
+            // Reset to first page when changing filters
+            currentPage = 1;
+            
+            // Update table display and pagination controls
+            updateTableDisplay();
+            updatePaginationControls();
+            
+            // Update the counts in the filter buttons
+            updateFilterCounts();
+        }
+        
+        // Function to update filter counts
+        function updateFilterCounts() {
+            // Get all table rows
+            const tableRows = document.querySelectorAll('tbody tr[data-user-type]');
+            
+            // Count users by type
+            let allCount = 0;
+            let hotspotCount = 0;
+            let pppoeCount = 0;
+            
+            tableRows.forEach(row => {
+                allCount++;
+                const userType = row.getAttribute('data-user-type');
+                if (userType === 'hotspot') {
+                    hotspotCount++;
+                } else if (userType === 'pppoe') {
+                    pppoeCount++;
+                }
+            });
+            
+            // Update the counts in the filter buttons
+            const filterButtons = document.querySelectorAll('.flex.flex-wrap.gap-4.mb-6 button');
+            filterButtons[0].querySelector('span').textContent = allCount;
+            filterButtons[1].querySelector('span').textContent = hotspotCount;
+            filterButtons[2].querySelector('span').textContent = pppoeCount;
+        }
+        
+        // Function to update table display based on current page and rows per page
+        function updateTableDisplay() {
+            // Hide all rows first
+            const allRows = document.querySelectorAll('tbody tr[data-user-type]');
+            allRows.forEach(row => {
+                row.classList.add('hidden');
+            });
+            
+            // Show only the rows for the current page
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, filteredRows.length);
+            
+            // Show rows for current page
+            for (let i = startIndex; i < endIndex; i++) {
+                filteredRows[i].classList.remove('hidden');
+            }
+        }
+        
+        // Function to update pagination controls
+        function updatePaginationControls() {
+            const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+            
+            // Get the pagination control elements
+            const paginationNav = document.getElementById('pagination-controls');
+            const pageLinks = paginationNav.querySelectorAll('a');
+            
+            if (pageLinks.length >= 3) {
+                const prevButton = pageLinks[0];
+                const pageDisplay = pageLinks[1];
+                const nextButton = pageLinks[2];
+                
+                // Update page number display
+                pageDisplay.textContent = currentPage + ' of ' + (totalPages || 1);
+                
+                // Update previous button state
+                if (currentPage === 1) {
+                    prevButton.classList.add('text-gray-300', 'cursor-not-allowed');
+                    prevButton.classList.remove('text-gray-700', 'hover:bg-gray-50');
+                } else {
+                    prevButton.classList.remove('text-gray-300', 'cursor-not-allowed');
+                    prevButton.classList.add('text-gray-700', 'hover:bg-gray-50');
+                }
+                
+                // Update next button state
+                if (currentPage === totalPages || totalPages === 0) {
+                    nextButton.classList.add('text-gray-300', 'cursor-not-allowed');
+                    nextButton.classList.remove('text-gray-700', 'hover:bg-gray-50');
+                } else {
+                    nextButton.classList.remove('text-gray-300', 'cursor-not-allowed');
+                    nextButton.classList.add('text-gray-700', 'hover:bg-gray-50');
+                }
+            }
+            
+            // Update rows per page dropdown
+            const rowsPerPageSelect = document.getElementById('rows-per-page');
+            if (rowsPerPageSelect) {
+                rowsPerPageSelect.value = rowsPerPage;
+            }
+        }
+        
+        // Function to change rows per page
+        function changeRowsPerPage(selectElement) {
+            rowsPerPage = parseInt(selectElement.value);
+            currentPage = 1;
+            updateTableDisplay();
+            updatePaginationControls();
+        }
+        
+        // Function to change page
+        function changePage(direction) {
+            const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+            
+            // Validate direction input
+            if (direction === -1 && currentPage > 1) {
+                currentPage--;
+            } else if (direction === 1 && currentPage < totalPages) {
+                currentPage++;
+            }
+            
+            // Update table display and pagination controls
+            updateTableDisplay();
+            updatePaginationControls();
+        }
+        
+        // Add this function to handle sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // Save sidebar state to localStorage
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            
+            // Change icon based on sidebar state
+            if (isCollapsed) {
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to apply saved sidebar state
+        function applySidebarState() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            // Check if sidebar state is saved in localStorage
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                sidebar.classList.remove('collapsed');
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to show the active users content in flex layout
+        function showActiveUsers() {
+            // This function can be expanded if needed for additional functionality
+            console.log("Active users tab activated");
+            // Update filter counts when page loads
+            updateFilterCounts();
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            showActiveUsers();
+            applySidebarState();
+            
+            // Initialize filtered rows with all users
+            const tableRows = document.querySelectorAll('tbody tr[data-user-type]');
+            filteredRows = []; // Reset the array
+            tableRows.forEach(row => {
+                filteredRows.push(row);
+            });
+            
+            // Update table display
+            updateTableDisplay();
+            
+            // Update filter counts on page load
+            updateFilterCounts();
+            
+            // Initialize pagination controls
+            updatePaginationControls();
+        });
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+            width: 282px;
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+            top: 4rem;
+            z-index: 20;
+        }
+        .sidebar.collapsed {
+            width: 88px;
+        }
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+        .sidebar.collapsed .nav-badge {
+            display: none;
+        }
+        .sidebar.collapsed .section-title {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-toggle-icon {
+            transform: rotate(180deg);
+        }
+        .main-content {
+            transition: all 0.3s ease;
+            margin-left: 282px;
+        }
+        .sidebar.collapsed + .main-content {
+            margin-left: 88px;
+        }
+        .nav-link:hover {
+            background-color: #fef2f2;
+        }
+        .nav-link.active {
+            background-color: #fef2f2;
+        }
+        .stat-card {
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        /* Ensure dropdowns appear above other elements */
+        .origin-top-right {
+            z-index: 50 !important;
+        }
+        /* Enhance dropdown button visibility */
+        .dropdown-button {
+            padding: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .dropdown-button:hover {
+            background-color: #f3f4f6;
+        }
+        /* Vertical three dots */
+        .vertical-dots {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dot {
+            width: 4px;
+            height: 4px;
+            background-color: #9ca3af;
+            border-radius: 50%;
+            margin: 1px 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md fixed w-full z-10">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-4">
+                <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 focus:outline-none" onclick="toggleSidebar()">
+                    <i id="sidebarIcon" class="fas fa-chevron-left text-xl"></i>
+                </button>
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">NeighborhoodNet</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search..." class="py-1 px-3 pl-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                    <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-sm"></i>
+                </div>
+                <div class="relative">
+                    <button id="notificationButton" class="relative p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleNotifications(event)">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                    </button>
+                </div>
+                <div class="relative">
+                    <button id="settingsButton" class="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleSettingsDropdown()">
+                        <i class="fas fa-cog text-xl"></i>
+                    </button>
+                    <!-- Settings Dropdown Menu -->
+                    <div id="settingsDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 hidden z-20">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2 text-gray-600"></i> Settings
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-file-invoice-dollar mr-2 text-gray-600"></i> Billing & Subscription
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-users mr-2 text-gray-600"></i> System Users
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-clipboard-list mr-2 text-gray-600"></i> System Logs
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2 text-gray-600"></i> Features & Bug Report
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-headset mr-2 text-gray-600"></i> Contact Support
+                        </a>
+                        <hr class="my-2">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-sign-out-alt mr-2 text-gray-600"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="fixed top-16 right-0 h-full w-80 bg-white shadow-xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800">Notifications</h2>
+                <button onclick="closeNotifications(event)" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto h-full pb-20">
+            <div class="p-4">
+                <div class="space-y-4">
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-red-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New user registered</p>
+                                <p class="text-sm text-gray-500">John Doe has registered for the 20Mbps plan</p>
+                                <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">New</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i class="fas fa-money-bill text-green-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">Payment received</p>
+                                <p class="text-sm text-gray-500">₦15,000 received from Jane Smith</p>
+                                <p class="text-xs text-gray-400 mt-1">5 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-ticket-alt text-blue-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New support ticket</p>
+                                <p class="text-sm text-gray-500">Robert Johnson opened a new ticket</p>
+                                <p class="text-xs text-gray-400 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">Service alert</p>
+                                <p class="text-sm text-gray-500">Network performance degradation detected</p>
+                                <p class="text-xs text-gray-400 mt-1">2 days ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                    <i class="fas fa-server text-purple-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">System update</p>
+                                <p class="text-sm text-gray-500">Scheduled maintenance completed successfully</p>
+                                <p class="text-xs text-gray-400 mt-1">3 days ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <button class="w-full py-2 text-center text-sm text-gray-500 hover:text-gray-700">
+                <i class="fas fa-history mr-1"></i> View all notifications
+            </button>
+        </div>
+    </div>
+
+    <div class="pt-16">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar bg-white shadow-md fixed">
+            <div class="p-4">
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Dashboard</h2>
+                    <ul>
+                        <li>
+                            <a href="isp.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-home mr-3 text-gray-600"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Users</h2>
+                    <ul>
+                        <li>
+                            <a href="active-users.html" class="nav-link active flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-signal mr-3 text-gray-600"></i>
+                                <span class="nav-text">Active Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-users mr-3 text-gray-600"></i>
+                                <span class="nav-text">Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tickets.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Tickets</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">15</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="leads.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-user-plus mr-3 text-gray-600"></i>
+                                <span class="nav-text">Leads</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Finance</h2>
+                    <ul>
+                        <li>
+                            <a href="packages.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-box mr-3 text-gray-600"></i>
+                                <span class="nav-text">Packages</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="payments.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-money-bill-wave mr-3 text-gray-600"></i>
+                                <span class="nav-text">Payments</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="vouchers.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Vouchers</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="expenses.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-file-invoice-dollar mr-3 text-gray-600"></i>
+                                <span class="nav-text">Expenses</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Communication</h2>
+                    <ul>
+                        <li>
+                            <a href="sms.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-sms mr-3 text-gray-600"></i>
+                                <span class="nav-text">Sms</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="emails.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-envelope mr-3 text-gray-600"></i>
+                                <span class="nav-text">Emails</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Devices</h2>
+                    <ul>
+                        <li>
+                            <a href="mikrotik.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-network-wired mr-3 text-gray-600"></i>
+                                <span class="nav-text">MikroTik</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="equipment.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-server mr-3 text-gray-600"></i>
+                                <span class="nav-text">Equipment</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content p-6 pt-6">
+            <div class="flex flex-col md:flex-row">
+                <!-- Main Content Area -->
+                <div class="md:w-full">
+                    <div class="bg-white rounded-xl shadow-md mb-6">
+                        <div class="p-6">
+                            <h1 class="text-2xl font-bold text-gray-800 mb-2">Active Users</h1>
+                            <p class="text-gray-600">View and manage currently connected users.</p>
+                        </div>
+                        
+                        <!-- User Type Filters -->
+                        <div class="p-6 pt-0">
+                            <div class="flex flex-wrap gap-4 mb-6">
+                                <button class="px-4 py-2 text-red-600 border-b-2 border-red-600 font-medium" onclick="filterActiveUsers(event, 'all')">
+                                    All
+                                    <span class="ml-2 bg-red-100 text-red-800 rounded-full px-2 py-1 text-xs">3</span>
+                                </button>
+                                <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="filterActiveUsers(event, 'hotspot')">
+                                    Hotspot
+                                    <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">2</span>
+                                </button>
+                                <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="filterActiveUsers(event, 'pppoe')">
+                                    PPPoE
+                                    <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">1</span>
+                                </button>
+                                
+                                <!-- Search and Filter Icons -->
+                                <div class="ml-auto flex items-center space-x-2">
+                                    <div class="relative">
+                                        <input type="text" placeholder="Search users..." class="py-1 px-3 pl-8 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-transparent">
+                                        <i class="fas fa-search absolute left-2 top-1.5 text-xs text-gray-400"></i>
+                                    </div>
+                                    <div class="relative">
+                                        <button id="filterButton" class="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100" onclick="toggleFilterDropdown()">
+                                            <i class="fas fa-filter"></i>
+                                        </button>
+                                        <!-- Filter Dropdown -->
+                                        <div id="filterDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 hidden z-20">
+                                            <div class="px-4 py-2 border-b border-gray-100">
+                                                <h3 class="font-medium text-gray-800">Columns</h3>
+                                            </div>
+                                            <div class="px-4 py-2">
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" class="rounded text-red-600 focus:ring-red-500" checked>
+                                                    <span class="ml-2 text-gray-700">Username</span>
+                                                </label>
+                                            </div>
+                                            <div class="px-4 py-2">
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" class="rounded text-red-600 focus:ring-red-500" checked>
+                                                    <span class="ml-2 text-gray-700">Account Number</span>
+                                                </label>
+                                            </div>
+                                            <div class="px-4 py-2">
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" class="rounded text-red-600 focus:ring-red-500" checked>
+                                                    <span class="ml-2 text-gray-700">IP/MAC</span>
+                                                </label>
+                                            </div>
+                                            <div class="px-4 py-2">
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" class="rounded text-red-600 focus:ring-red-500" checked>
+                                                    <span class="ml-2 text-gray-700">Router</span>
+                                                </label>
+                                            </div>
+                                            <div class="px-4 py-2">
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" class="rounded text-red-600 focus:ring-red-500" checked>
+                                                    <span class="ml-2 text-gray-700">Session Start</span>
+                                                </label>
+                                            </div>
+                                            <div class="px-4 py-2">
+                                                <label class="flex items-center">
+                                                    <input type="checkbox" class="rounded text-red-600 focus:ring-red-500" checked>
+                                                    <span class="ml-2 text-gray-700">Session End</span>
+                                                </label>
+                                            </div>
+                                            <div class="px-4 py-3 border-t border-gray-100">
+                                                <button class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium">
+                                                    Apply Columns
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Active Users Table -->
+                            <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-white">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username <i class="fas fa-chevron-down text-xs"></i></th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP/MAC</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Router</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session Start</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session End</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <!-- Sample data rows -->
+                                            <tr data-user-type="hotspot">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">John Doe</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.10</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Main Router</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-06-15 08:30:00</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div class="relative inline-block text-left">
+                                                        <button type="button" class="dropdown-button text-gray-500 hover:text-gray-700 focus:outline-none px-2 py-1" onclick="toggleDropdown('dropdown1')">
+                                                            <div class="vertical-dots">
+                                                                <div class="dot"></div>
+                                                                <div class="dot"></div>
+                                                                <div class="dot"></div>
+                                                            </div>
+                                                        </button>
+                                                        <div id="dropdown1" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden">
+                                                            <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-edit mr-2 text-gray-500"></i> Edit
+                                                                </a>
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-eye mr-2 text-gray-500"></i> View
+                                                                </a>
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-trash mr-2 text-gray-500"></i> Delete
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr data-user-type="hotspot">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Jane Smith</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.15</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Backup Router</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-06-15 09:15:00</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div class="relative inline-block text-left">
+                                                        <button type="button" class="dropdown-button text-gray-500 hover:text-gray-700 focus:outline-none px-2 py-1" onclick="toggleDropdown('dropdown2')">
+                                                            <div class="vertical-dots">
+                                                                <div class="dot"></div>
+                                                                <div class="dot"></div>
+                                                                <div class="dot"></div>
+                                                            </div>
+                                                        </button>
+                                                        <div id="dropdown2" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden">
+                                                            <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-edit mr-2 text-gray-500"></i> Edit
+                                                                </a>
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-eye mr-2 text-gray-500"></i> View
+                                                                </a>
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-trash mr-2 text-gray-500"></i> Delete
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr data-user-type="pppoe">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Michael Johnson</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">192.168.1.22</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Main Router</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-06-15 10:45:00</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div class="relative inline-block text-left">
+                                                        <button type="button" class="dropdown-button text-gray-500 hover:text-gray-700 focus:outline-none px-2 py-1" onclick="toggleDropdown('dropdown3')">
+                                                            <div class="vertical-dots">
+                                                                <div class="dot"></div>
+                                                                <div class="dot"></div>
+                                                                <div class="dot"></div>
+                                                            </div>
+                                                        </button>
+                                                        <div id="dropdown3" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden">
+                                                            <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-edit mr-2 text-gray-500"></i> Edit
+                                                                </a>
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-eye mr-2 text-gray-500"></i> View
+                                                                </a>
+                                                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                                                    <i class="fas fa-trash mr-2 text-gray-500"></i> Delete
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Pagination Controls -->
+                                <div class="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-6">
+                                    <div class="flex items-center">
+                                        <span class="text-sm text-gray-700 mr-2">Rows per page:</span>
+                                        <select id="rows-per-page" onchange="changeRowsPerPage(this)" class="border border-gray-300 rounded-md px-2 py-1 text-sm">
+                                            <option value="10" selected>10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex flex-1 justify-end">
+                                        <nav id="pagination-controls" class="inline-flex rounded-md shadow-sm">
+                                            <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-l-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50" onclick="changePage(-1); return false;">
+                                                Previous
+                                            </a>
+                                            <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border-t border-b border-gray-300">
+                                                1 of 1
+                                            </a>
+                                            <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50" onclick="changePage(1); return false;">
+                                                Next
+                                            </a>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

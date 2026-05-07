@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MikroTik Management - ISP System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#dc2626',
+                        secondary: '#000000',
+                        accent: '#ffffff'
+                    }
+                }
+            }
+        }
+        
+        // Function to toggle settings dropdown
+        function toggleSettingsDropdown() {
+            const dropdown = document.getElementById('settingsDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const settingsButton = document.getElementById('settingsButton');
+            const dropdown = document.getElementById('settingsDropdown');
+            
+            if (dropdown && settingsButton && 
+                !settingsButton.contains(event.target) && 
+                !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+        
+        // Function to toggle notification panel
+        function toggleNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Remove the translate-x-full class to show the panel
+            notificationPanel.classList.remove('translate-x-full');
+        }
+        
+        // Function to close notification panel
+        function closeNotifications(event) {
+            // Prevent event propagation if event exists
+            if (event) {
+                event.stopPropagation();
+            }
+            
+            const notificationPanel = document.getElementById('notificationPanel');
+            // Add the translate-x-full class to hide the panel
+            notificationPanel.classList.add('translate-x-full');
+        }
+        
+        // Close notification panel when clicking outside
+        document.addEventListener('click', function(event) {
+            const notificationPanel = document.getElementById('notificationPanel');
+            const notificationButton = document.getElementById('notificationButton');
+            
+            // Check if click is outside the notification panel and not on the notification button
+            if (notificationPanel && notificationButton && 
+                !notificationPanel.contains(event.target) && 
+                !notificationButton.contains(event.target)) {
+                // Close the panel (add translate-x-full class to move it off-screen)
+                notificationPanel.classList.add('translate-x-full');
+            }
+        });
+        
+        // Function to handle mikrotik sub-tabs
+        function showMikrotikSubTab(event, tabType) {
+            // Remove active class from all sub-tabs
+            const subTabs = document.querySelectorAll('.flex.flex-wrap.gap-4.mb-6 button');
+            subTabs.forEach(tab => {
+                tab.classList.remove('text-red-600', 'border-red-600');
+                tab.classList.add('text-gray-500', 'border-transparent');
+            });
+            
+            // Add active class to clicked sub-tab
+            event.target.closest('button').classList.remove('text-gray-500', 'border-transparent');
+            event.target.closest('button').classList.add('text-red-600', 'border-red-600');
+            
+            // Get all table rows (excluding the "No Mikrotik" row if it exists)
+            const tableRows = document.querySelectorAll('tbody tr:not(#no-mikrotik-row)');
+            
+            // Filter based on tabType
+            tableRows.forEach(row => {
+                const statusCell = row.cells[4]; // Status column (0-indexed)
+                const statusText = statusCell.textContent.trim();
+                
+                let shouldShow = false;
+                
+                switch(tabType) {
+                    case 'all':
+                        shouldShow = true;
+                        break;
+                    case 'online':
+                        shouldShow = (statusText === 'Online');
+                        break;
+                    case 'offline':
+                        shouldShow = (statusText === 'Offline');
+                        break;
+                    default:
+                        shouldShow = true;
+                }
+                
+                if (shouldShow) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update the count in the active button
+            const activeButton = event.target.closest('button');
+            const countSpan = activeButton.querySelector('span');
+            if (countSpan) {
+                // For 'all' tab, show the sidebar count; for others, show actual count
+                if (tabType === 'all') {
+                    // Get the count from the sidebar
+                    const sidebarLink = document.querySelector('a[href="mikrotik.html"]');
+                    if (sidebarLink) {
+                        const badge = sidebarLink.querySelector('.nav-badge');
+                        if (badge) {
+                            countSpan.textContent = badge.textContent.trim();
+                        }
+                    }
+                } else {
+                    // Count visible rows for this filter
+                    let count = 0;
+                    tableRows.forEach(row => {
+                        const statusCell = row.cells[4];
+                        const statusText = statusCell.textContent.trim();
+                        
+                        if ((tabType === 'online' && statusText === 'Online') || 
+                            (tabType === 'offline' && statusText === 'Offline')) {
+                            if (row.style.display !== 'none') {
+                                count++;
+                            }
+                        }
+                    });
+                    countSpan.textContent = count;
+                }
+            }
+            
+            // Check if there are no rows displayed and show "No Mikrotik" message for non-'all' tabs
+            if (tabType !== 'all') {
+                const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
+                const tableBody = document.querySelector('tbody');
+                
+                // Remove any existing "No Mikrotik" row
+                const noMikrotikRow = document.getElementById('no-mikrotik-row');
+                if (noMikrotikRow) {
+                    noMikrotikRow.remove();
+                }
+                
+                // If no rows are visible, add a "No Mikrotik" row
+                if (visibleRows.length === 0) {
+                    const noMikrotikRow = document.createElement('tr');
+                    noMikrotikRow.id = 'no-mikrotik-row';
+                    noMikrotikRow.innerHTML = `
+                        <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                            No Mikrotik devices found
+                        </td>
+                    `;
+                    tableBody.appendChild(noMikrotikRow);
+                }
+            } else {
+                // Remove "No Mikrotik" row if we're showing all
+                const noMikrotikRow = document.getElementById('no-mikrotik-row');
+                if (noMikrotikRow) {
+                    noMikrotikRow.remove();
+                }
+            }
+        }
+
+        // Function to update all filter button counts
+        function updateFilterCounts() {
+            const tableRows = document.querySelectorAll('tbody tr:not(#no-mikrotik-row)');
+            
+            // Count for each status
+            let onlineCount = 0;
+            let offlineCount = 0;
+            
+            tableRows.forEach(row => {
+                const statusCell = row.cells[4]; // Status column (0-indexed)
+                const statusText = statusCell.textContent.trim();
+                
+                if (statusText === 'Online') {
+                    onlineCount++;
+                } else if (statusText === 'Offline') {
+                    offlineCount++;
+                }
+            });
+            
+            // Update the counts in the filter buttons (excluding 'all' which uses sidebar count)
+            const filterButtons = document.querySelectorAll('.flex.flex-wrap.gap-4.mb-6 button');
+            if (filterButtons.length >= 3) {
+                const onlineSpan = filterButtons[1].querySelector('span');
+                const offlineSpan = filterButtons[2].querySelector('span');
+                
+                if (onlineSpan) onlineSpan.textContent = onlineCount;
+                if (offlineSpan) offlineSpan.textContent = offlineCount;
+            }
+        }
+
+        // Add this function to handle sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // Save sidebar state to localStorage
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            
+            // Change icon based on sidebar state
+            if (isCollapsed) {
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Function to apply saved sidebar state
+        function applySidebarState() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('sidebarIcon');
+            const mainContent = document.querySelector('.main-content');
+            
+            // Check if sidebar state is saved in localStorage
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                icon.className = 'fas fa-chevron-right text-xl';
+                mainContent.style.marginLeft = '88px';
+            } else {
+                sidebar.classList.remove('collapsed');
+                icon.className = 'fas fa-chevron-left text-xl';
+                mainContent.style.marginLeft = '282px';
+            }
+        }
+        
+        // Apply sidebar state when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applySidebarState();
+            // Update filter counts on page load
+            updateFilterCounts();
+        });
+    </script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+            width: 282px;
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+            top: 4rem;
+            z-index: 20;
+        }
+        .sidebar.collapsed {
+            width: 88px;
+        }
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+        .sidebar.collapsed .nav-badge {
+            display: none;
+        }
+        .sidebar.collapsed .section-title {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-toggle-icon {
+            transform: rotate(180deg);
+        }
+        .main-content {
+            transition: all 0.3s ease;
+            margin-left: 282px;
+        }
+        .sidebar.collapsed + .main-content {
+            margin-left: 88px;
+        }
+        .nav-link:hover {
+            background-color: #fef2f2;
+        }
+        .nav-link.active {
+            background-color: #fef2f2;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md fixed w-full z-10">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-4">
+                <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 focus:outline-none" onclick="toggleSidebar()">
+                    <i id="sidebarIcon" class="fas fa-chevron-left text-xl"></i>
+                </button>
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">NeighborhoodNet</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <input type="text" placeholder="Search..." class="py-1 px-3 pl-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                    <i class="fas fa-search absolute left-2 top-2 text-gray-400 text-sm"></i>
+                </div>
+                <div class="relative">
+                    <button id="notificationButton" class="relative p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleNotifications(event)">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                    </button>
+                </div>
+                <div class="relative">
+                    <button id="settingsButton" class="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 focus:outline-none" onclick="toggleSettingsDropdown()">
+                        <i class="fas fa-cog text-xl"></i>
+                    </button>
+                    <!-- Settings Dropdown Menu -->
+                    <div id="settingsDropdown" class="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 hidden z-20">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-cog mr-2 text-gray-600"></i> Settings
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-file-invoice-dollar mr-2 text-gray-600"></i> Billing & Subscription
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-users mr-2 text-gray-600"></i> System Users
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-clipboard-list mr-2 text-gray-600"></i> System Logs
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-bug mr-2 text-gray-600"></i> Features & Bug Report
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-headset mr-2 text-gray-600"></i> Contact Support
+                        </a>
+                        <hr class="my-2">
+                        <a href="#" class="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            <i class="fas fa-sign-out-alt mr-2 text-gray-600"></i> Sign out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Notification Panel -->
+    <div id="notificationPanel" class="fixed top-16 right-0 h-full w-80 bg-white shadow-xl z-30 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800">Notifications</h2>
+                <button onclick="closeNotifications(event)" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto h-full pb-20">
+            <div class="p-4">
+                <div class="space-y-4">
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-red-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New user registered</p>
+                                <p class="text-sm text-gray-500">John Doe has registered for the 20Mbps plan</p>
+                                <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">New</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i class="fas fa-money-bill text-green-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">Payment received</p>
+                                <p class="text-sm text-gray-500">₦15,000 received from Jane Smith</p>
+                                <p class="text-xs text-gray-400 mt-1">5 hours ago</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border-b border-gray-100 pb-4">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-ticket-alt text-blue-600"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-900">New support ticket</p>
+                                <p class="text-sm text-gray-500">Robert Johnson opened a new ticket</p>
+                                <p class="text-xs text-gray-400 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <button class="w-full py-2 text-center text-sm text-gray-500 hover:text-gray-700">
+                <i class="fas fa-history mr-1"></i> View all notifications
+            </button>
+        </div>
+    </div>
+
+    <div class="pt-16">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar bg-white shadow-md fixed">
+            <div class="p-4">
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Dashboard</h2>
+                    <ul>
+                        <li>
+                            <a href="isp.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-home mr-3 text-gray-600"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Users</h2>
+                    <ul>
+                        <li>
+                            <a href="active-users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-signal mr-3 text-gray-600"></i>
+                                <span class="nav-text">Active Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">3</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="users.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-users mr-3 text-gray-600"></i>
+                                <span class="nav-text">Users</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="tickets.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Tickets</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">15</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="leads.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-user-plus mr-3 text-gray-600"></i>
+                                <span class="nav-text">Leads</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">3</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Finance</h2>
+                    <ul>
+                        <li>
+                            <a href="packages.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-box mr-3 text-gray-600"></i>
+                                <span class="nav-text">Packages</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">5</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="payments.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-money-bill-wave mr-3 text-gray-600"></i>
+                                <span class="nav-text">Payments</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="vouchers.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-ticket-alt mr-3 text-gray-600"></i>
+                                <span class="nav-text">Vouchers</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="expenses.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-file-invoice-dollar mr-3 text-gray-600"></i>
+                                <span class="nav-text">Expenses</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Communication</h2>
+                    <ul>
+                        <li>
+                            <a href="sms.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-sms mr-3 text-gray-600"></i>
+                                <span class="nav-text">Sms</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="emails.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-envelope mr-3 text-gray-600"></i>
+                                <span class="nav-text">Emails</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="mb-8">
+                    <h2 class="section-title text-xs uppercase font-semibold text-gray-500 mb-2 px-4">Devices</h2>
+                    <ul>
+                        <li>
+                            <a href="mikrotik.html" class="nav-link active flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-network-wired mr-3 text-gray-600"></i>
+                                <span class="nav-text">MikroTik</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">2</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="equipment.html" class="nav-link flex items-center px-4 py-2 my-1 rounded-lg">
+                                <i class="fas fa-server mr-3 text-gray-600"></i>
+                                <span class="nav-text">Equipment</span>
+                                <span class="nav-badge ml-auto bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">3</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content p-6 pt-6">
+            <div class="flex flex-col md:flex-row">
+                <!-- Main Content Area -->
+                <div class="md:w-full">
+                    <div class="bg-white rounded-xl shadow-md mb-6">
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h1 class="text-2xl font-bold text-gray-800">MikroTik Devices</h1>
+                                    <p class="text-gray-600">Manage and monitor your MikroTik network devices.</p>
+                                </div>
+                                <a href="create-mikrotik.html" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                                    <i class="fas fa-link mr-2"></i> Link Mikrotik
+                                </a>
+                            </div>
+                            
+                            <!-- Mikrotik Type Filters -->
+                            <div class="flex flex-wrap gap-4 mb-6">
+                                <button class="px-4 py-2 text-red-600 border-b-2 border-red-600 font-medium" onclick="showMikrotikSubTab(event, 'all')">
+                                    All
+                                    <span class="ml-2 bg-red-100 text-red-800 rounded-full px-2 py-1 text-xs">2</span>
+                                </button>
+                                <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="showMikrotikSubTab(event, 'online')">
+                                    Online
+                                    <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">1</span>
+                                </button>
+                                <button class="px-4 py-2 text-gray-500 hover:text-gray-700 border-b-2 border-transparent hover:border-gray-300" onclick="showMikrotikSubTab(event, 'offline')">
+                                    Offline
+                                    <span class="ml-2 bg-gray-100 text-gray-800 rounded-full px-2 py-1 text-xs">1</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Mikrotik Devices Table -->
+                            <div class="bg-gray-50 rounded-lg border border-gray-200 p-4">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-white">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board Name</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provisioning</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPU</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Memory</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remote Winbox</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <!-- Sample data rows -->
+                                            <tr>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">RB4011iGS+</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Complete</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">12%</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">256MB / 512MB</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">Online</span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <button class="text-red-600 hover:text-red-800">
+                                                        <i class="fas fa-external-link-alt"></i> Connect
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">RB3011UiAS</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Pending</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <span class="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded">Offline</span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <button class="text-red-600 hover:text-red-800">
+                                                        <i class="fas fa-external-link-alt"></i> Connect
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Pagination Controls -->
+                                <div class="flex items-center justify-end border-t border-gray-200 px-4 py-3 sm:px-6 mt-6">
+                                    <div class="flex flex-1 justify-end">
+                                        <a href="#" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Next</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
